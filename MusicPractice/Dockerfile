@@ -1,6 +1,6 @@
 # ./Dockerfile 
 FROM python:3.10.11
-WORKDIR /usr/src/app
+WORKDIR /app
 
 ## Install packages
 COPY requirements.txt ./
