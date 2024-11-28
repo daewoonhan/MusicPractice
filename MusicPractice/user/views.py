@@ -12,8 +12,22 @@ class UserRegisterView(APIView):
   def post(self, req):
     serializer = UserSerializer(data=req.data)
     serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response(serializer.data, status=201)
+    
+    user = serializer.save()
+    
+    access_payload = {
+    'id': user.id,
+    'exp': datetime.datetime.now(pytz.timezone('Asia/Seoul')) + datetime.timedelta(minutes=60),
+    'iat': datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+    }
+    access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm="HS256")
+    
+    return Response({
+      "message": "회원가입 성공",  
+      "data": {
+          "accessToken": access_token
+      }
+    }, status=201)
 
 class UserLoginView(APIView):
   def post(self, req):
@@ -71,15 +85,18 @@ class UserLoginView(APIView):
 
 class UserUpdateView(APIView):
   def put(self, req):
-    token = req.COOKIES.get('jwt')
+    auth_header = req.headers.get('Authorization', None)
 
-    if not token:
-      raise AuthenticationFailed('인증 실패')
+    if not auth_header:
+      raise AuthenticationFailed('인증 토큰이 필요합니다.')
 
     try:
-      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+      token = auth_header.split(' ')[1]
+      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
-      raise AuthenticationFailed('토큰 만료')
+      raise AuthenticationFailed('토큰이 만료되었습니다.')
+    except jwt.DecodeError:
+      raise AuthenticationFailed('유효하지 않은 토큰입니다.')
 
     user = User.objects.filter(id=payload['id']).first()
     if user is None:
@@ -94,16 +111,19 @@ class UserUpdateView(APIView):
 
 class LogoutView(APIView):
   def post(self, req):
-    token = req.COOKIES.get('jwt')
+    auth_header = req.headers.get('Authorization', None)
 
-    if not token:
-      raise AuthenticationFailed('인증 실패')
+    if not auth_header:
+      raise AuthenticationFailed('인증 토큰이 필요합니다.')
 
     try:
-      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+      token = auth_header.split(' ')[1]
+      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
       user = User.objects.filter(id=payload['id']).first()
     except jwt.ExpiredSignatureError:
-      raise AuthenticationFailed('토큰 만료')
+      raise AuthenticationFailed('토큰이 만료되었습니다.')
+    except jwt.DecodeError:
+      raise AuthenticationFailed('유효하지 않은 토큰입니다.')
 
     Token.objects.filter(user=user).delete()
 
@@ -114,17 +134,18 @@ class LogoutView(APIView):
 
 class TokenRefreshView(APIView):
   def post(self, req):
-    token = req.COOKIES.get('jwt')
+    auth_header = req.headers.get('Authorization', None)
 
-    if not token:
-      raise AuthenticationFailed('AccessToken이 제공되지 않았습니다.')
+    if not auth_header:
+      raise AuthenticationFailed('인증 토큰이 필요합니다.')
 
     try:
-      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+      token = auth_header.split(' ')[1]
+      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
-      raise AuthenticationFailed('AccessToken이 만료되었습니다.')
-    except jwt.InvalidTokenError:
-      raise AuthenticationFailed('유효하지 않은 AccessToken입니다.')
+      raise AuthenticationFailed('토큰이 만료되었습니다.')
+    except jwt.DecodeError:
+      raise AuthenticationFailed('유효하지 않은 토큰입니다.')
 
     user = User.objects.filter(id=payload['id']).first()
     if not user:

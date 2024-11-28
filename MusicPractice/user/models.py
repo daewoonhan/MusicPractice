@@ -11,11 +11,11 @@ class UserManager(BaseUserManager):
       return user
 
 class User(AbstractUser): 
-  user_id = models.AutoField(primary_key=True)
-  id = models.CharField(max_length=50, unique=True, db_index=True)
-  password = models.CharField(max_length=255)
-  name = models.CharField(max_length=50)
-  email = models.CharField(max_length=100, unique=True)
+  user_id = models.AutoField(primary_key=True, null=False)
+  id = models.CharField(max_length=50, unique=True, null=False)
+  password = models.CharField(max_length=255, null=False)
+  name = models.CharField(max_length=50, null=False)
+  email = models.CharField(max_length=100, unique=True, null=False)
   introduction = models.CharField(max_length=255, null=True, blank=True)
 
   username = None
@@ -29,7 +29,7 @@ class User(AbstractUser):
     db_table='user'
 
 class Token(models.Model):
-  user = models.OneToOneField('User', on_delete=models.CASCADE, primary_key=True, db_column='user_id')
+  user = models.OneToOneField('User', on_delete=models.CASCADE, primary_key=True, db_column='user_id', null=False)
   refresh_token = models.CharField(max_length=255)
   expires_at = models.DateTimeField(default=(now() + timedelta(days=7)))
 

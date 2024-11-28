@@ -3,13 +3,12 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from django.db.models import Q
-from .models import Music, Album, Artist
+from .models import Music
 from user.models import User
 from practice.models import Practice
-import jwt, datetime, pytz
+import jwt, pytz
 from django.conf import settings
-from django.db import connection
-
+from datetime import datetime, timedelta
 class MusicSearchView(APIView):
   def get(self, req):
     access_token = req.headers.get('Authorization')
@@ -34,12 +33,22 @@ class MusicSearchView(APIView):
     
     music_results = Music.objects.filter(
         Q(title__icontains=search_query) |
-        Q(artist__artist__icontains=search_query)  # artist의 이름을 참조
+        Q(artist__artist__icontains=search_query)
     ).select_related('artist', 'album').values(
         'album__album_cover', 'album__album_name', 'title', 'artist__artist', 'total_count', 'play_time'
     )
 
-    results = list(music_results)
+    results = [
+      {
+        "album_cover": record['album__album_cover'],
+        "title": record['title'],
+        "artist": record['artist__artist'],
+        "total_count": record['total_count'],
+        "album_name": record['album__album_name'],
+        "play_time": record['play_time']
+      }
+      for record in music_results
+    ]
 
     response_data = {
       "message": "검색어 조회 성공",
@@ -77,15 +86,25 @@ class MusicAddView(APIView):
     if not music:
       return Response({'message': '음악을 찾을 수 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    practice_date = datetime.datetime.now(pytz.timezone('Asia/Seoul')).date()
+    practice_date = datetime.now(pytz.timezone('Asia/Seoul')).date()
 
     try:
-      with connection.cursor() as cursor:
-        cursor.execute("""
-          INSERT INTO practice (user_id, music_id, practice_date)
-          VALUES (%s, %s, %s)
-        """, [user.user_id, music_id, practice_date])
+      practice = Practice.objects.get(user=user, music=music, practice_date=practice_date)
+      practice.practice_count += 1
+      practice_seconds = (practice.practice_time.hour * 3600 + practice.practice_time.minute * 60 + practice.practice_time.second)
+      practice_seconds += (music.play_time.hour * 3600 + music.play_time.minute * 60 + music.play_time.second)
+      practice_time = (datetime.min + timedelta(seconds=practice_seconds)).time()
+      practice.practice_time = practice_time
+      practice.save()
+      return Response({'message': '연습 곡 업데이트 성공'}, status=status.HTTP_200_OK)
+    except Practice.DoesNotExist:
+      Practice.objects.create(
+        user=user,
+        music=music,
+        practice_date=practice_date,
+        practice_count=1,
+        practice_time=music.play_time
+      )
+      return Response({'message': '연습 곡 추가 성공'}, status=status.HTTP_201_CREATED)
     except Exception as e:
       return Response({'message': f'오류 발생: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    return Response({'message': '연습 곡 추가 성공'}, status=status.HTTP_201_CREATED)
