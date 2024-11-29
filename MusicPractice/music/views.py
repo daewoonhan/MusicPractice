@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from django.db.models import Q
-from .models import Music
+from .models import Music, MusicView
 from user.models import User
 from practice.models import Practice
 import jwt, pytz
@@ -31,28 +31,21 @@ class MusicSearchView(APIView):
         "message": "검색어가 제공되지 않았습니다."
       }, status=400)
     
-    music_results = Music.objects.filter(
-        Q(title__icontains=search_query) |
-        Q(artist__artist__icontains=search_query)
-    ).select_related('artist', 'album').values(
-        'album__album_cover', 'album__album_name', 'title', 'artist__artist', 'total_count', 'play_time'
+    music_results = MusicView.objects.filter(
+      Q(title__icontains=search_query) |
+      Q(artist__icontains=search_query)
+    ).values(
+      'music_id', 'title', 'artist', 'album_name', 'album_cover', 'play_time', 'total_count'
     )
 
-    results = [
-      {
-        "album_cover": record['album__album_cover'],
-        "title": record['title'],
-        "artist": record['artist__artist'],
-        "total_count": record['total_count'],
-        "album_name": record['album__album_name'],
-        "play_time": record['play_time']
-      }
-      for record in music_results
-    ]
+    if not music_results:
+      return Response({
+        "message": "검색된 음악이 없습니다."
+      }, status=404)
 
     response_data = {
       "message": "검색어 조회 성공",
-      "data": results
+      "data": music_results
     }
 
     return Response(response_data, status=200)
@@ -96,6 +89,8 @@ class MusicAddView(APIView):
       practice_time = (datetime.min + timedelta(seconds=practice_seconds)).time()
       practice.practice_time = practice_time
       practice.save()
+      music.total_count += 1
+      music.save()
       return Response({'message': '연습 곡 업데이트 성공'}, status=status.HTTP_200_OK)
     except Practice.DoesNotExist:
       Practice.objects.create(

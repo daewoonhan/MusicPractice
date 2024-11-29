@@ -132,6 +132,33 @@ class LogoutView(APIView):
     res.data = {"message": "로그아웃 성공"}
     return res
 
+class UserProfileView(APIView):
+  def get(self, req):
+    auth_header = req.headers.get('Authorization', None)
+
+    if not auth_header:
+      raise AuthenticationFailed('인증 토큰이 필요합니다.')
+
+    try:
+      token = auth_header.split(' ')[1]
+      payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+      raise AuthenticationFailed('토큰이 만료되었습니다.')
+    except jwt.DecodeError:
+      raise AuthenticationFailed('유효하지 않은 토큰입니다.')
+
+    user = User.objects.filter(id=payload['id']).first()
+    if user is None:
+      raise AuthenticationFailed('존재하지 않는 유저입니다.')
+
+    profile = {
+      "name": user.name,
+      "email": user.email,
+      "introduction": user.introduction or ""
+    }
+
+    return Response(profile, status=200)
+
 class TokenRefreshView(APIView):
   def post(self, req):
     auth_header = req.headers.get('Authorization', None)

@@ -1,1 +1,3 @@
-web: gunicorn MusicPractice.wsgi --log-file -
+web: waitress-serve --host=0.0.0.0 --port=$PORT MusicPractice.wsgi:application
+release: python manage.py collectstatic --noinput
+

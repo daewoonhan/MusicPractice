@@ -1,17 +1,18 @@
-# ./Dockerfile 
+# Use Python 3.10.11 as base image
 FROM python:3.10.11
+
+# Set working directory in the container
 WORKDIR /usr/src/app
 
-## Install packages
+# Install required Python packages
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-## Copy all src files
+# Copy the entire project into the container
 COPY . .
 
-## Run the application on the port 8080
-EXPOSE 8000
+# Expose the port (Heroku assigns this dynamically)
+EXPOSE $PORT
 
-# gunicorn 배포 명령어
-# CMD ["gunicorn", "--bind", "허용하는 IP:열어줄 포트", "project.wsgi:application"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "MusicPractice.wsgi:application"]
+# Run the application using Waitress
+CMD ["sh", "-c", "waitress-serve --listen=0.0.0.0:$PORT MusicPractice.wsgi:application"]

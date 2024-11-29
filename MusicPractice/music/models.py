@@ -25,3 +25,16 @@ class Artist(models.Model):
 
   class Meta:
     db_table='artist'
+
+class MusicView(models.Model):
+    music_id = models.IntegerField()
+    title = models.CharField(max_length=100)
+    artist = models.CharField(max_length=100)
+    album_name = models.CharField(max_length=100)
+    album_cover = models.CharField(max_length=255)
+    play_time = models.TimeField()
+    total_count = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'music_view'

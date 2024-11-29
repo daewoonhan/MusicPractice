@@ -94,13 +94,16 @@ DATABASES = {
         'USER': env('DB_USER'),
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT')
+        'PORT': env('DB_PORT'),
+        'OPTIONS': {
+            'ssl': {'ssl_disabled': True}
+        }
     }
 }
 
-db_from_env = dj_database_url.config(conn_max_age=0, ssl_require=False)
-django_heroku.settings(locals() ,databases=False)
-DATABASES['default'].update(db_from_env)
+db_from_env = dj_database_url.config(conn_max_age=0)
+django_heroku.settings(locals())
+del DATABASES['default']['OPTIONS']['sslmode'] 
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -137,6 +140,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
