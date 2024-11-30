@@ -1,7 +1,7 @@
 from django.db import models
 
 class Music(models.Model):
-  music_id = models.AutoField(primary_key=True, null=False)
+  music_id = models.AutoField(primary_key=True, null=False, db_index=True)
   title = models.CharField(max_length=100, db_index=True, null=False)
   artist = models.ForeignKey('Artist', on_delete=models.CASCADE, related_name='music', null=True)
   album = models.ForeignKey('Album', on_delete=models.CASCADE, related_name='music', null=True)
@@ -27,9 +27,9 @@ class Artist(models.Model):
     db_table='artist'
 
 class MusicView(models.Model):
-    music_id = models.IntegerField()
-    title = models.CharField(max_length=100)
-    artist = models.CharField(max_length=100)
+    music_id = models.IntegerField(db_index=True)
+    title = models.CharField(max_length=100, db_index=True)
+    artist = models.CharField(max_length=100, db_index=True)
     album_name = models.CharField(max_length=100)
     album_cover = models.CharField(max_length=255)
     play_time = models.TimeField()
